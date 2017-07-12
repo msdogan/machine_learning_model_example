@@ -1,6 +1,6 @@
 __author__ = 'mustafa_dogan'
 import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedShuffleSplit
 from sklearn import ensemble, datasets, linear_model
 from sklearn.linear_model import LassoCV
 from sklearn.metrics import mean_squared_error
@@ -13,24 +13,27 @@ from pylab import *
 # sns.set_style("white")
 
 # Read organized data. Organize data in a way that last column is labels and rest is attributes
-data = pd.read_csv('data.csv', header=0)
+dataRaw = pd.read_csv('data.csv', header=0)
 
-# data summary (you need to print to see results - below)
+# ignore first column (date)
+data = dataRaw.iloc[:,1:len(dataRaw.columns)]
+
+# # data summary (you need to print to see results - below)
 summary = data.describe()
 
-# Number of rows and columns in data
+# # Number of rows and columns in data
 nDataRow = len(data.index)
-nDataCol = len(data.columns)
+nDataCol = len(data.columns) 
 
-# Normalize data
-dataNormalized = data.iloc[:,0:nDataCol]
+# Normalize data from dataRaw
+dataNormalized = dataRaw.iloc[:,1:len(dataRaw.columns)]
 for i in range(nDataCol):
     mean = summary.iloc[1, i]
     sd = summary.iloc[2, i]
     dataNormalized.iloc[:,i:(i+1)] = (dataNormalized.iloc[:,i:(i+1)]-mean)/sd
 
 # True if you want to normalize data (preferred), False if not.
-Normalization = True
+Normalization = False
 
 # If normalization is true then use normalized data set
 if Normalization == True:
@@ -58,7 +61,7 @@ Names = np.array(names)
 xTrain, xTest, yTrain, yTest = train_test_split(X, y, test_size=0.30, random_state=531)
 
 # ******* Random Forest Model *******
-#train random forest at a range of ensemble sizes in order to see how the mse changes
+# train random forest at a range of ensemble sizes in order to see how the mse changes
 r2 = [] # r^2 score of the training data using an out-of-bag estimate
 mse = [] # mean squared error
 nTreeList = range(100, 510, 20)
@@ -66,7 +69,7 @@ for iTrees in nTreeList:
     depth = None
     maxFeat  = 'sqrt' #try tweaking, can be integer from 0 to max # of features, 'auto', 'log2' or 'sqrt'
     RFModel = ensemble.RandomForestRegressor(n_estimators=iTrees, max_depth=depth, max_features=maxFeat,
-                                                 oob_score=True, n_jobs = -1, random_state=531)
+                                                 oob_score=True, n_jobs = 1, random_state=531)
     RFModel.fit(xTrain,yTrain)
     #Accumulate mse on test set
     prediction = RFModel.predict(xTest)
@@ -95,7 +98,9 @@ plt.show()
 
 # Plot coefficients
 alphas, coefs, _  = linear_model.lasso_path(X, y,  return_models=False)
+plt.figure()
 plt.plot(alphas,coefs.T)
+plt.axvline(LassoModel.alpha_, linestyle='--', label='CV Estimate of Best alpha')
 plt.xlabel('alpha')
 plt.ylabel('Coefficients')
 plt.axis('tight')
@@ -106,12 +111,21 @@ ax.invert_xaxis()
 plt.savefig('lassoCVcoeffs.pdf', transparent=True)
 plt.show()
 
-# # ******* Data Properties *******
+# ******* Data Properties *******
 
-# # # describe data
-# # print(data.head())
-# # print(data.tail())
-# # print(summary)
+# # describe data
+# print(data.head())
+# print(data.tail())
+# print(summary)
+
+# look at raw data keys and create a time-series plot
+# print(dataRaw.keys())
+plt.plot_date(dataRaw['date'],dataRaw['runoff'],fmt="b-")
+plt.xlabel('date')
+plt.ylabel('runoff')
+plt.grid(True)
+plt.savefig('time_series.pdf', transparent=True)
+plt.show()
 
 # parallel axis plot of input data
 parallel_coordinates(data, str(data.keys()[-1]), alpha=0.5)
@@ -137,8 +151,8 @@ corMat = pd.DataFrame(data.corr())
 # visualize correlations using heatmap
 plt.pcolor(corMat,vmin=-1,vmax=1)
 plt.yticks(np.arange(len(Names)),Names)
-plt.xticks(np.arange(len(Names)),Names)
-plt.subplots_adjust(left=0.2, right=0.9, top=0.9, bottom=0.1)
+plt.xticks(np.arange(len(Names)),Names, rotation='vertical')
+plt.subplots_adjust(left=0.2, right=0.9, top=0.9, bottom=0.2)
 cb = plt.colorbar()
 cb.set_label('Correlation')
 cb.set_ticks([1, 0, -1])  # force there to be only 3 ticks
@@ -153,11 +167,11 @@ plt.xticks(np.arange(1,len(Names)+1),Names)
 plt.savefig('boxplot.pdf', transparent=True)
 show()
 
-# # # or with seaborn you can create a boxplot
-# # sns.boxplot(data=data)
-# # plt.ylabel("Quartile Ranges")
-# # plt.savefig('boxplot.pdf', transparent=True)
-# # plt.show()
+# # or with seaborn you can create a boxplot
+# sns.boxplot(data=data)
+# plt.ylabel("Quartile Ranges")
+# plt.savefig('boxplot.pdf', transparent=True)
+# plt.show()
 
 # scatter plot two variables to see how they look like
 # pick two variables, indexing starts from zero
@@ -193,7 +207,7 @@ plt.show()
 # plot histogram of errors
 errorVector = yTest-RFModel.predict(xTest)
 plt.hist(errorVector)
-plt.xlabel("Bin Boundaries")
+plt.xlabel("Bin Boundaries - Errors (Test - Prediction)")
 plt.ylabel("Counts")
 plt.savefig('histogram.pdf', transparent=True)
 plt.show()
