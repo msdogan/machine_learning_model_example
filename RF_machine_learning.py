@@ -27,10 +27,10 @@ dataNormalized = data.iloc[:,0:nDataCol]
 for i in range(nDataCol):
     mean = summary.iloc[1, i]
     sd = summary.iloc[2, i]
-dataNormalized.iloc[:,i:(i+1)] = (dataNormalized.iloc[:,i:(i+1)]-mean)/sd
+    dataNormalized.iloc[:,i:(i+1)] = (dataNormalized.iloc[:,i:(i+1)]-mean)/sd
 
 # True if you want to normalize data (preferred), False if not.
-Normalization = False
+Normalization = True
 
 # If normalization is true then use normalized data set
 if Normalization == True:
