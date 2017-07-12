@@ -30,8 +30,9 @@ for i in range(nDataCol):
 dataNormalized.iloc[:,i:(i+1)] = (dataNormalized.iloc[:,i:(i+1)]-mean)/sd
 
 # True if you want to normalize data (preferred), False if not.
-Normalization = True
+Normalization = False
 
+# If normalization is true then use normalized data set
 if Normalization == True:
     data = dataNormalized
 
@@ -58,64 +59,65 @@ xTrain, xTest, yTrain, yTest = train_test_split(X, y, test_size=0.30, random_sta
 
 # ******* Random Forest Model *******
 #train random forest at a range of ensemble sizes in order to see how the mse changes
+r2 = [] # r^2 score of the training data using an out-of-bag estimate
 mse = [] # mean squared error
-nTreeList = range(100, 400, 20)
+nTreeList = range(100, 510, 20)
 for iTrees in nTreeList:
     depth = None
-    maxFeat  = 2 #try tweaking
+    maxFeat  = 'sqrt' #try tweaking, can be integer from 0 to max # of features, 'auto', 'log2' or 'sqrt'
     RFModel = ensemble.RandomForestRegressor(n_estimators=iTrees, max_depth=depth, max_features=maxFeat,
-                                                 oob_score=False, random_state=531)
+                                                 oob_score=True, n_jobs = -1, random_state=531)
     RFModel.fit(xTrain,yTrain)
     #Accumulate mse on test set
     prediction = RFModel.predict(xTest)
     mse.append(mean_squared_error(yTest, prediction))
-
+    r2.append(RFModel.oob_score_)
 
 # ******* Penalized Linear Regression Model *******
-# # least absolute shrinkage and selection operator regression
-# LassoModel = LassoCV(cv=10,random_state=531).fit(X, y)
-# prediction = LassoModel.predict(xTest)
-# plt.figure()
-# plt.plot(LassoModel.alphas_, LassoModel.mse_path_, ':')
-# plt.plot(LassoModel.alphas_, LassoModel.mse_path_.mean(axis=-1),
-#                 label='Average MSE Across Folds', linewidth=2)
-# plt.axvline(LassoModel.alpha_, linestyle='--',
-#                 label='CV Estimate of Best alpha')
-# plt.semilogx()
-# plt.legend()
-# ax = plt.gca()
-# ax.invert_xaxis()
-# plt.xlabel('alpha')
-# plt.ylabel('Mean Squared Error')
-# plt.axis('tight')
-# plt.savefig('lassoCVerror.pdf', transparent=True)
-# plt.show()
+# least absolute shrinkage and selection operator regression
+LassoModel = LassoCV(cv=10,random_state=531).fit(X, y)
+prediction = LassoModel.predict(xTest)
+plt.figure()
+plt.plot(LassoModel.alphas_, LassoModel.mse_path_, ':')
+plt.plot(LassoModel.alphas_, LassoModel.mse_path_.mean(axis=-1),
+                label='Average MSE Across Folds', linewidth=2)
+plt.axvline(LassoModel.alpha_, linestyle='--',
+                label='CV Estimate of Best alpha')
+plt.semilogx()
+plt.legend()
+ax = plt.gca()
+ax.invert_xaxis()
+plt.xlabel('alpha')
+plt.ylabel('Mean Squared Error')
+plt.axis('tight')
+plt.savefig('lassoCVerror.pdf', transparent=True)
+plt.show()
 
-# # Plot coefficients
-# alphas, coefs, _  = linear_model.lasso_path(X, y,  return_models=False)
-# plt.plot(alphas,coefs.T)
-# plt.xlabel('alpha')
-# plt.ylabel('Coefficients')
-# plt.axis('tight')
-# plt.semilogx()
-# plt.legend(Names[0:len(Names)-1])
-# ax = plt.gca()
-# ax.invert_xaxis()
-# plt.savefig('lassoCVcoeffs.pdf', transparent=True)
-# plt.show()
+# Plot coefficients
+alphas, coefs, _  = linear_model.lasso_path(X, y,  return_models=False)
+plt.plot(alphas,coefs.T)
+plt.xlabel('alpha')
+plt.ylabel('Coefficients')
+plt.axis('tight')
+plt.semilogx()
+plt.legend(Names[0:len(Names)-1])
+ax = plt.gca()
+ax.invert_xaxis()
+plt.savefig('lassoCVcoeffs.pdf', transparent=True)
+plt.show()
 
-# ******* Data Properties *******
+# # ******* Data Properties *******
 
-# # describe data
-# print(data.head())
-# print(data.tail())
-# print(summary)
+# # # describe data
+# # print(data.head())
+# # print(data.tail())
+# # print(summary)
 
-# # parallel axis plot of input data
-# parallel_coordinates(data, str(data.keys()[-1]), alpha=0.5)
-# plt.gca().legend_.remove()
-# plt.savefig('parallel.pdf', transparent=True)
-# plt.show()
+# parallel axis plot of input data
+parallel_coordinates(data, str(data.keys()[-1]), alpha=0.5)
+plt.gca().legend_.remove()
+plt.savefig('parallel.pdf', transparent=True)
+plt.show()
 
 # # another way of creating parallel axis plot
 # for i in range(nDataRow):
@@ -130,83 +132,92 @@ for iTrees in nTreeList:
 # plt.savefig('parallel.pdf', transparent=True)
 # plt.show()
 
-# # calculate correlations between real-valued attributes
-# corMat = pd.DataFrame(data.corr())
-# # visualize correlations using heatmap
-# plt.pcolor(corMat,vmin=-1,vmax=1)
-# plt.yticks(np.arange(len(Names)),Names)
-# plt.xticks(np.arange(len(Names)),Names)
-# plt.subplots_adjust(left=0.2, right=0.9, top=0.9, bottom=0.1)
-# cb = plt.colorbar()
-# cb.set_label('Correlation')
-# cb.set_ticks([1, 0, -1])  # force there to be only 3 ticks
-# # cb.set_ticklabels(['High', 'No', 'Negative'])  # put text labels on them
-# plt.savefig('corrmap.pdf', transparent=True)
-# plt.show()
+# calculate correlations between real-valued attributes
+corMat = pd.DataFrame(data.corr())
+# visualize correlations using heatmap
+plt.pcolor(corMat,vmin=-1,vmax=1)
+plt.yticks(np.arange(len(Names)),Names)
+plt.xticks(np.arange(len(Names)),Names)
+plt.subplots_adjust(left=0.2, right=0.9, top=0.9, bottom=0.1)
+cb = plt.colorbar()
+cb.set_label('Correlation')
+cb.set_ticks([1, 0, -1])  # force there to be only 3 ticks
+# cb.set_ticklabels(['High', 'No', 'Negative'])  # put text labels on them
+plt.savefig('corrmap.pdf', transparent=True)
+plt.show()
 
-# # create a boxplot of data
-# boxplot(data.iloc[:,0:nDataCol].values)
-# plt.ylabel("Quartile Ranges")
-# plt.xticks(np.arange(1,len(Names)+1),Names)
-# plt.savefig('boxplot.pdf', transparent=True)
-# show()
+# create a boxplot of data
+boxplot(data.iloc[:,0:nDataCol].values)
+plt.ylabel("Quartile Ranges")
+plt.xticks(np.arange(1,len(Names)+1),Names)
+plt.savefig('boxplot.pdf', transparent=True)
+show()
 
-# # or with seaborn you can create a boxplot
-# sns.boxplot(data=data)
-# plt.ylabel("Quartile Ranges")
-# plt.savefig('boxplot.pdf', transparent=True)
-# plt.show()
+# # # or with seaborn you can create a boxplot
+# # sns.boxplot(data=data)
+# # plt.ylabel("Quartile Ranges")
+# # plt.savefig('boxplot.pdf', transparent=True)
+# # plt.show()
 
-# # scatter plot two variables to see how they look like
-# # pick two variables, indexing starts from zero
-# i = 0
-# j = 1
-# # print(data.keys()) # look at column names to choose what to plot
-# plt.scatter(data[data.keys()[i]],data[data.keys()[j]])
-# plt.xlabel(data.keys()[i])
-# plt.ylabel(data.keys()[j])
-# plt.savefig(str(data.keys()[i])+'_'+str(data.keys()[j])+'.pdf', transparent=True)
-# plt.show()
+# scatter plot two variables to see how they look like
+# pick two variables, indexing starts from zero
+i = 0
+j = 1
+# print(data.keys()) # look at column names to choose what to plot
+plt.scatter(data[data.keys()[i]],data[data.keys()[j]])
+plt.xlabel(data.keys()[i])
+plt.ylabel(data.keys()[j])
+plt.savefig(str(data.keys()[i])+'_'+str(data.keys()[j])+'.pdf', transparent=True)
+plt.show()
 
 # # ******* Performance indicators *******
 
-# # plot training and test errors vs number of trees in ensemble
-# plt.plot(nTreeList, mse, marker='o')
-# plt.xlabel('Number of Trees in Ensemble')
-# plt.ylabel('Mean Squared Error')
-# plt.subplots_adjust(left=0.2, right=0.9, top=0.9, bottom=0.1)
-# plt.savefig('error.pdf', transparent=True)
-# plt.show()
+# combine MSE and r2 in one plot
+fig, ax1 = plt.subplots()
+a, = ax1.plot(nTreeList, mse, marker='o',color='b',alpha=0.5,label='MSE')
+ax1.set_xlabel('Number of Trees in Ensemble')
+# Make the y-axis label, ticks and tick labels match the line color.
+ax1.set_ylabel('Mean Squared Error')
+ax1.tick_params('y')
 
-# # plot histogram of errors
-# errorVector = yTest-RFModel.predict(xTest)
-# plt.hist(errorVector)
-# plt.xlabel("Bin Boundaries")
-# plt.ylabel("Counts")
-# plt.savefig('histogram.pdf', transparent=True)
-# plt.show()
+ax2 = ax1.twinx()
+b, = ax2.plot(nTreeList, r2, marker='o',color='red',alpha=0.5,label='r$^2$')
+ax2.set_ylabel('r$^2$ Score')
+ax2.tick_params('y')
+fig.tight_layout()
+p = [a, b]
+ax2.legend(p, [p_.get_label() for p_ in p],loc='center right')
+plt.savefig('error_score.pdf', transparent=True)
+plt.show()
 
-# # Plot feature importance
-# featureImportance = RFModel.feature_importances_
-# # normalize by max importance
-# featureImportance = featureImportance / featureImportance.max()
-# sorted_idx = np.argsort(featureImportance)
-# barPos = np.arange(sorted_idx.shape[0]) 
-# plt.barh(barPos, featureImportance[sorted_idx], align='center')
-# plt.yticks(barPos, Names[sorted_idx])
-# plt.xlabel('Variable Importance')
-# plt.subplots_adjust(left=0.3, right=0.9, top=0.9, bottom=0.1)
-# plt.savefig('FeatureImportance.pdf', transparent=True)
-# plt.show()
+# plot histogram of errors
+errorVector = yTest-RFModel.predict(xTest)
+plt.hist(errorVector)
+plt.xlabel("Bin Boundaries")
+plt.ylabel("Counts")
+plt.savefig('histogram.pdf', transparent=True)
+plt.show()
 
-# # scatter plot predicted values vs test labels. it plots last prediction in nTreesList range
-# diag = np.arange(-0,12) # adjust diagonal initial and ending values
-# plt.plot(diag, diag, linestyle=':', color='red')
-# plt.scatter(yTest,prediction)
-# plt.xlim = [min(yTest),max(yTest)]
-# plt.ylim = [min(prediction),max(prediction)]
-# plt.xlabel('Test')
-# plt.ylabel('Prediction')
-# plt.savefig('TestvsPredict.pdf', transparent=True)
-# plt.show()
+# Plot feature importance
+featureImportance = RFModel.feature_importances_
+# normalize by max importance
+featureImportance = featureImportance / featureImportance.max()
+sorted_idx = np.argsort(featureImportance)
+barPos = np.arange(sorted_idx.shape[0]) 
+plt.barh(barPos, featureImportance[sorted_idx], align='center')
+plt.yticks(barPos, Names[sorted_idx])
+plt.xlabel('Variable Importance')
+plt.subplots_adjust(left=0.3, right=0.9, top=0.9, bottom=0.1)
+plt.savefig('FeatureImportance.pdf', transparent=True)
+plt.show()
 
+# scatter plot predicted values vs test labels. it plots last prediction in nTreesList range
+diag = np.arange(min(min(yTest),min(prediction)),max(max(yTest),max(prediction))) # adjust diagonal initial and ending values
+plt.plot(diag, diag, linestyle=':', color='red',alpha=0.5)
+plt.scatter(yTest,prediction,alpha=0.5)
+plt.xlim = [min(yTest),max(yTest)]
+plt.ylim = [min(prediction),max(prediction)]
+plt.xlabel('Test')
+plt.ylabel('Prediction')
+plt.savefig('TestvsPredict.pdf', transparent=True)
+plt.show()
